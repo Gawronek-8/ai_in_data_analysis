@@ -11,6 +11,8 @@ import time
 from stripsProblem import STRIPS_domain, Strips, Planning_problem
 from stripsForwardPlanner import Forward_STRIPS
 from searchMPP import SearcherMPP
+from searchGeneric import AStarSearcher
+from searchBranchAndBound import DF_branch_and_bound
 
 
 # 7*8*8*8*8*2 = 57 344 states
@@ -42,7 +44,7 @@ actions_domain = {
     Strips('move_D_E', {'robot_location': 'regD'}, {'robot_location': 'regE'}),
     Strips('move_E_D', {'robot_location': 'regE'}, {'robot_location': 'regD'}),
     Strips('move_E_out', {'robot_location': 'regE'}, {'robot_location': 'out'}),
-    Strips('move_out_C', {'robot_location': 'out'}, {'robot_location': 'regE'}),
+    Strips('move_out_E', {'robot_location': 'out'}, {'robot_location': 'regE'}),
 
     Strips('pick_p1_in', {'robot_location': 'in', 'p1_location': 'in', 'robot': 'empty'}, {'p1_location': 'robot', "robot": 'full'}),
     Strips('pick_p1_A', {'robot_location': 'regA', 'p1_location': 'regA', 'robot': 'empty'},
@@ -101,29 +103,29 @@ actions_domain = {
     Strips('drop_p1_A', {'robot_location': 'regA', 'p1_location': 'robot'}, {'p1_location': 'regA', 'robot': 'empty'}),
     Strips('drop_p1_B', {'robot_location': 'regB', 'p1_location': 'robot'}, {'p1_location': 'regB', 'robot': 'empty'}),
     Strips('drop_p1_C', {'robot_location': 'regC', 'p1_location': 'robot'}, {'p1_location': 'regC', 'robot': 'empty'}),
-    Strips('drop_p1_D', {'robot_location': 'regD', 'p1_location': 'robot'}, {'p1_location': 'regE', 'robot': 'empty'}),
-    Strips('drop_p1_E', {'robot_location': 'regE', 'p1_location': 'robot'}, {'p1_location': 'regD', 'robot': 'empty'}),
+    Strips('drop_p1_D', {'robot_location': 'regD', 'p1_location': 'robot'}, {'p1_location': 'regD', 'robot': 'empty'}),
+    Strips('drop_p1_E', {'robot_location': 'regE', 'p1_location': 'robot'}, {'p1_location': 'regE', 'robot': 'empty'}),
     Strips('drop_p1_out', {'robot_location': 'out', 'p1_location': 'robot'}, {'p1_location': 'out', 'robot': 'empty'}),
     Strips('drop_p2_in', {'robot_location': 'in', 'p2_location': 'robot'}, {'p2_location': 'in', 'robot': 'empty'}),
     Strips('drop_p2_A', {'robot_location': 'regA', 'p2_location': 'robot'}, {'p2_location': 'regA', 'robot': 'empty'}),
     Strips('drop_p2_B', {'robot_location': 'regB', 'p2_location': 'robot'}, {'p2_location': 'regB', 'robot': 'empty'}),
     Strips('drop_p2_C', {'robot_location': 'regC', 'p2_location': 'robot'}, {'p2_location': 'regC', 'robot': 'empty'}),
-    Strips('drop_p2_D', {'robot_location': 'regD', 'p2_location': 'robot'}, {'p2_location': 'regE', 'robot': 'empty'}),
-    Strips('drop_p2_E', {'robot_location': 'regE', 'p2_location': 'robot'}, {'p2_location': 'regD', 'robot': 'empty'}),
+    Strips('drop_p2_D', {'robot_location': 'regD', 'p2_location': 'robot'}, {'p2_location': 'regD', 'robot': 'empty'}),
+    Strips('drop_p2_E', {'robot_location': 'regE', 'p2_location': 'robot'}, {'p2_location': 'regE', 'robot': 'empty'}),
     Strips('drop_p2_out', {'robot_location': 'out', 'p2_location': 'robot'}, {'p2_location': 'out', 'robot': 'empty'}),
     Strips('drop_p3_in', {'robot_location': 'in', 'p3_location': 'robot'}, {'p3_location': 'in', 'robot': 'empty'}),
     Strips('drop_p3_A', {'robot_location': 'regA', 'p3_location': 'robot'}, {'p3_location': 'regA', 'robot': 'empty'}),
     Strips('drop_p3_B', {'robot_location': 'regB', 'p3_location': 'robot'}, {'p3_location': 'regB', 'robot': 'empty'}),
     Strips('drop_p3_C', {'robot_location': 'regC', 'p3_location': 'robot'}, {'p3_location': 'regC', 'robot': 'empty'}),
-    Strips('drop_p3_D', {'robot_location': 'regD', 'p3_location': 'robot'}, {'p3_location': 'regE', 'robot': 'empty'}),
-    Strips('drop_p3_E', {'robot_location': 'regE', 'p3_location': 'robot'}, {'p3_location': 'regD', 'robot': 'empty'}),
+    Strips('drop_p3_D', {'robot_location': 'regD', 'p3_location': 'robot'}, {'p3_location': 'regD', 'robot': 'empty'}),
+    Strips('drop_p3_E', {'robot_location': 'regE', 'p3_location': 'robot'}, {'p3_location': 'regE', 'robot': 'empty'}),
     Strips('drop_p3_out', {'robot_location': 'out', 'p3_location': 'robot'}, {'p3_location': 'out', 'robot': 'empty'}),
     Strips('drop_p4_in', {'robot_location': 'in', 'p4_location': 'robot'}, {'p4_location': 'in', 'robot': 'empty'}),
     Strips('drop_p4_A', {'robot_location': 'regA', 'p4_location': 'robot'}, {'p4_location': 'regA', 'robot': 'empty'}),
     Strips('drop_p4_B', {'robot_location': 'regB', 'p4_location': 'robot'}, {'p4_location': 'regB', 'robot': 'empty'}),
     Strips('drop_p4_C', {'robot_location': 'regC', 'p4_location': 'robot'}, {'p4_location': 'regC', 'robot': 'empty'}),
-    Strips('drop_p4_D', {'robot_location': 'regD', 'p4_location': 'robot'}, {'p4_location': 'regE', 'robot': 'empty'}),
-    Strips('drop_p4_E', {'robot_location': 'regE', 'p4_location': 'robot'}, {'p4_location': 'regD', 'robot': 'empty'}),
+    Strips('drop_p4_D', {'robot_location': 'regD', 'p4_location': 'robot'}, {'p4_location': 'regD', 'robot': 'empty'}),
+    Strips('drop_p4_E', {'robot_location': 'regE', 'p4_location': 'robot'}, {'p4_location': 'regE', 'robot': 'empty'}),
     Strips('drop_p4_out', {'robot_location': 'out', 'p4_location': 'robot'}, {'p4_location': 'out', 'robot': 'empty'}),
 
 }
@@ -140,8 +142,22 @@ problem = Planning_problem(delivery_domain,
                            {'p1_location': 'regC', 'p2_location': 'out', 'p3_location': 'regA', 'p4_location': 'in', 'robot': 'empty', 'robot_location': 'in'}
 )
 
+simple_problem1 = Planning_problem(delivery_domain,
+                                   {'robot_location': 'in', 'p1_location': 'regB', 'p2_location': 'in', 'p3_location': 'in', 'p4_location': 'in', 'robot': 'empty'},
+                                   {'p1_location': 'regE'})
+
+simple_problem2 = Planning_problem(delivery_domain,
+                                   {'robot_location': 'out', 'p1_location': 'regB', 'p2_location': 'in', 'p3_location': 'in', 'p4_location': 'in', 'robot': 'empty'},
+                                   {'p1_location': 'regC', 'p2_location': 'regB'})
+
+simple_problem3 = Planning_problem(delivery_domain,
+                                   {'robot_location': 'in', 'p1_location': 'regB', 'p2_location': 'regD', 'p3_location': 'in', 'p4_location': 'in', 'robot': 'empty'},
+                                   {'p1_location': 'regE', 'p2_location': 'out'})
+
 # A* search
 start = time.time()
-SearcherMPP(Forward_STRIPS(problem)).search()
+# SearcherMPP(Forward_STRIPS(simple_problem3)).search()
+AStarSearcher(Forward_STRIPS(simple_problem2)).search()
+# DF_branch_and_bound(Forward_STRIPS(simple_problem1)).search()
 end = time.time()
 print("Searching took %.6f seconds" % (end - start))
