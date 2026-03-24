@@ -154,10 +154,22 @@ simple_problem3 = Planning_problem(delivery_domain,
                                    {'robot_location': 'in', 'p1_location': 'regB', 'p2_location': 'regD', 'p3_location': 'in', 'p4_location': 'in', 'robot': 'empty'},
                                    {'p1_location': 'regE', 'p2_location': 'out'})
 
+advanced_problem1 = Planning_problem(delivery_domain,
+                                   {'robot_location': 'regA', 'p1_location': 'regC', 'p2_location': 'regC', 'p3_location': 'regC', 'p4_location': 'regC', 'robot': 'empty'},
+                                   {'p1_location': 'out', 'p2_location': 'regB', 'p3_location': 'regA', 'p4_location': 'regD', 'robot': 'empty'})
+
+advanced_problem2 = Planning_problem(delivery_domain,
+                                   {'robot_location': 'in', 'p1_location': 'regD', 'p2_location': 'robot', 'p3_location': 'regA', 'p4_location': 'regB', 'robot': 'full'},
+                                   {'robot_location': 'out', 'p1_location': 'out', 'p2_location': 'regC', 'p3_location': 'regB', 'p4_location': 'robot', 'robot': 'full'})
+
+advanced_problem3 = Planning_problem(delivery_domain,
+                                   {'robot_location': 'in', 'p1_location': 'regA', 'p2_location': 'regB', 'p3_location': 'regC', 'p4_location': 'regD', 'robot': 'empty'},
+                                   {'p1_location': 'out', 'p2_location': 'regA', 'p3_location': 'regD', 'p4_location': 'regA', 'robot': 'empty'})
+
 # A* search
 start = time.time()
-# SearcherMPP(Forward_STRIPS(simple_problem3)).search()
-AStarSearcher(Forward_STRIPS(simple_problem2)).search()
+SearcherMPP(Forward_STRIPS(advanced_problem3)).search()
+# AStarSearcher(Forward_STRIPS(advanced_problem1)).search()
 # DF_branch_and_bound(Forward_STRIPS(simple_problem1)).search()
 end = time.time()
 print("Searching took %.6f seconds" % (end - start))
