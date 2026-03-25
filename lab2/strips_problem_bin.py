@@ -105,8 +105,35 @@ problem = Planning_problem(delivery_domain,
                            {'p1_C': True, 'p2_out': True, 'robot_full': False, 'robot_in': True}
 )
 
+
+regions = ["in", "A", "B", "C", "out"]
+
+reg_to_idx = {reg: idx for idx, reg in enumerate(regions)}
+
+def package_heur_bin(state , goal):
+    cost = 0
+    robot_location = 0
+    packages_val_s = []
+    for k, v in state.items():
+        if k.startswith("robot_") and k != 'robot_full':
+            robot_location = reg_to_idx[k.split("_")[1]]
+        elif k.startswith("p") and v:
+            last_part = k.split("_")[1]
+            packages_val_s.append(reg_to_idx.get(last_part, robot_location))
+
+    for k, v in goal.items():
+        if k.startswith("robot_") and k != 'robot_full':
+            cost += abs(reg_to_idx[k.split("_")[1]] - robot_location)
+        elif k.startswith("p") and v:
+            split_pos_name = k.split("_")
+            last_part = split_pos_name[1]
+            p_num = int(split_pos_name[0][1:])
+            cost += abs(reg_to_idx.get(last_part, packages_val_s[p_num - 1]) - packages_val_s[p_num - 1])
+
+    return cost
+
 # A* search
 start = time.time()
-SearcherMPP(Forward_STRIPS(problem)).search()
+SearcherMPP(Forward_STRIPS(problem, package_heur_bin)).search()
 end = time.time()
 print("Searching took %.6f seconds" % (end - start))

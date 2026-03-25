@@ -8,6 +8,7 @@ warehouse robot - sorting packages with placement logic
 """
 import time
 
+from lab2.stripsPOP import POP_search_from_STRIPS
 from stripsProblem import STRIPS_domain, Strips, Planning_problem
 from stripsForwardPlanner import Forward_STRIPS
 from searchMPP import SearcherMPP
@@ -25,7 +26,7 @@ feature_domain = {
     'p2_location': {'in', 'regA', 'regB', "regC", "regD", "regE", 'out', 'robot'},
     'p3_location': {'in', 'regA', 'regB', "regC", "regD", "regE", 'out', 'robot'},
     'p4_location': {'in', 'regA', 'regB', "regC", "regD", "regE", 'out', 'robot'},
-    'robot': {'full', 'empty'}
+    'rob ot': {'full', 'empty'}
 }
 
 # move - robot moves from one location to another, sequential order preserved, 12 actions
@@ -154,10 +155,29 @@ simple_problem3 = Planning_problem(delivery_domain,
                                    {'robot_location': 'in', 'p1_location': 'regB', 'p2_location': 'regD', 'p3_location': 'in', 'p4_location': 'in', 'robot': 'empty'},
                                    {'p1_location': 'regE', 'p2_location': 'out'})
 
+
+regions = ["in", "regA", "regB", "regC", "regD", "regE", "out"]
+
+reg_to_idx = {reg: idx for idx, reg in enumerate(regions)}
+
+def package_heur(state , goal):
+    cost = 0
+    for k, v in goal.items():
+        if "location" not in k:
+            continue
+        if state[k] == "robot":
+            cost += abs(reg_to_idx[state['robot_location']] - reg_to_idx[goal.get(k, 'robot_location')])
+        else:
+            cost += abs(reg_to_idx[state[k]] - reg_to_idx[goal[k]])
+    return cost
+
 # A* search
 start = time.time()
 # SearcherMPP(Forward_STRIPS(simple_problem3)).search()
-AStarSearcher(Forward_STRIPS(simple_problem2)).search()
+AStarSearcher(Forward_STRIPS(simple_problem2, heur=package_heur)).search()
 # DF_branch_and_bound(Forward_STRIPS(simple_problem1)).search()
+
+
+
 end = time.time()
 print("Searching took %.6f seconds" % (end - start))
