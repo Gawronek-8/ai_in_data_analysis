@@ -166,8 +166,12 @@ def package_heur(state , goal):
         if "location" not in k:
             continue
         if state[k] == "robot":
+            if goal.get(k) == 'robot':
+                continue
             cost += abs(reg_to_idx[state['robot_location']] - reg_to_idx[goal.get(k, 'robot_location')])
-        else:
+        elif k in state:
+            if goal.get(k) == 'robot':
+                continue
             cost += abs(reg_to_idx[state[k]] - reg_to_idx[goal[k]])
     return cost
 
@@ -185,12 +189,53 @@ advanced_problem3 = Planning_problem(delivery_domain,
                                    {'p1_location': 'out', 'p2_location': 'regA', 'p3_location': 'regD', 'p4_location': 'regA', 'robot': 'empty'})
 
 # A* search
-start = time.time()
-SearcherMPP(Forward_STRIPS(advanced_problem3)).search()
-# AStarSearcher(Forward_STRIPS(advanced_problem1)).search()
+
+def run_subproblem(start, subproblem, end, heur = None):
+    """Very ugly function to run subproblem"""
+
+
+    p1 = Planning_problem(delivery_domain, start, subproblem)
+
+    global_time = 0
+
+    if heur is None:
+        a_star_search = SearcherMPP(Forward_STRIPS(p1))
+    else:
+        a_star_search = SearcherMPP(Forward_STRIPS(p1, heur=heur))
+
+    start_t = time.time()
+    a_star_search.search()
+    end_t = time.time()
+
+    global_time += end_t - start_t
+
+    p2 = Planning_problem(delivery_domain, a_star_search.solution.end().assignment, end)
+
+    if heur is None:
+        a_star_search = SearcherMPP(Forward_STRIPS(p2))
+    else:
+        a_star_search = SearcherMPP(Forward_STRIPS(p2, heur=heur))
+
+    start_t = time.time()
+    a_star_search.search()
+    end_t = time.time()
+
+    global_time += end_t - start_t
+
+    print(f"{global_time:.6f} seconds")
+
+
+
+#start = time.time()
+#SearcherMPP(Forward_STRIPS(simple_problem2, heur=package_heur)).search()
+#AStarSearcher(Forward_STRIPS(simple_problem2)).search()
 # DF_branch_and_bound(Forward_STRIPS(simple_problem1)).search()
+#end = time.time()
+
+easy_sub = {'p4_location' : 'regA', 'p1_location' : 'regB'}
+easy_sub2 = {'p2_location' : 'regB', 'robot_location': 'out'}
 
 
+run_subproblem(advanced_problem3.initial_state, advanced_problem2.initial_state , advanced_problem3.goal, heur=package_heur)
 
-end = time.time()
-print("Searching took %.6f seconds" % (end - start))
+#print("Searching took %.6f seconds" % (end - start))
