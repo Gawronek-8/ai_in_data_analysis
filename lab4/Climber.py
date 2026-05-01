@@ -34,6 +34,8 @@ class Climber(Env):
     def __init__(self, render_mode = None, rock_every: float = 0, player_size = 15, rock_size = 15,
                  target_size = 15, rock_mass = 0.75, gravity = 450, pickaxe_length = 50, swing_power = 650):
 
+        self.target_body = None
+        self.player_body = None
         self.draw_options = None
         self.clock = None
         self.window = None
@@ -102,7 +104,7 @@ class Climber(Env):
         reward -= 0.01
 
         if self.hit_rock:
-            reward -= 50
+            reward -= 150
             terminated = True
             info["is_success"] = False
 
@@ -110,7 +112,7 @@ class Climber(Env):
             truncated = True
 
         elif self.hit_target:
-            reward += 100
+            reward += 300
             terminated = True
             info["is_success"] = True
 
@@ -123,12 +125,16 @@ class Climber(Env):
 
             curr_relative_pos = np.linalg.norm(np.array([target_x - curr_x, target_y - curr_y]))
 
-            reward += curr_relative_pos - prev_relative_pos
+            reward +=  prev_relative_pos - curr_relative_pos
+
+        # print("*" * 20)
+        # print(f"CURRENT REWARD IS {reward}")
+        # print("*" * 20)
 
 
         if self.curr_step % self.rock_every == 0:
-            rock = self._create_rock()
-            self.space.add(rock.body)
+            rock, rock_body = self._create_rock()
+            self.space.add(rock_body)
             self.space.add(rock)
 
         return obs, reward, terminated, truncated, info
@@ -170,13 +176,13 @@ class Climber(Env):
 
         self.space = pymunk.Space()
 
-        self.target: pymunk.Circle = self._create_target()
-        self.player: pymunk.Circle = self._create_player()
+        self.target, self.target_body = self._create_target()
+        self.player, self.player_body = self._create_player()
         self.prev_pos = self.player.body.position
         self.walls = self._create_walls()
         self.joint = None
 
-        self.space.add(self.player, self.player.body, self.target, self.target.body, *self.walls)
+        self.space.add(self.player, self.player_body, self.target, self.target_body, *self.walls)
         self.space.gravity = (0, self.gravity_level)
         self.space.on_collision(ObjectCategory.PLAYER, ObjectCategory.ROCK, begin = self._rock_collision)
         self.space.on_collision(ObjectCategory.PLAYER, ObjectCategory.TARGET, begin = self._target_collision)
@@ -201,7 +207,7 @@ class Climber(Env):
         rand_with_min = 50
         rand_with_max = max(self.metadata['map_settings']['width'] - 50, 100)
 
-        target_height_pos = 200
+        target_height_pos = 50
 
         return int(self.np_random.integers(low=rand_with_min, high=rand_with_max)), target_height_pos
 
@@ -214,7 +220,8 @@ class Climber(Env):
 
         return int(self.np_random.integers(low=rand_with_min, high=rand_with_max)), rock_height_pos
 
-    def _create_target(self) -> pymunk.Circle:
+
+    def _create_target(self) -> tuple[pymunk.Circle, pymunk.Body]:
         target_body = pymunk.Body(body_type=pymunk.Body.STATIC)
         target_body.position = self._generate_target_pos()
         target = pymunk.Circle(target_body, radius=self.target_size)
@@ -223,9 +230,10 @@ class Climber(Env):
         target.color = (0, 255, 0, 255)
         target.collision_type = ObjectCategory.TARGET
 
-        return target
+        return target, target_body
 
-    def _create_player(self) -> pymunk.Circle:
+
+    def _create_player(self) -> tuple[pymunk.Circle, pymunk.Body]:
         player_body = pymunk.Body(mass=1,
                                   moment=pymunk.moment_for_circle(1, 0, self.player_size),
                                   body_type=pymunk.Body.DYNAMIC
@@ -239,7 +247,8 @@ class Climber(Env):
         player.filter = pymunk.ShapeFilter(categories=ObjectCategory.PLAYER)
         player.collision_type = ObjectCategory.PLAYER
 
-        return player
+        return player, player_body
+
 
     def _create_walls(self) -> list[pymunk.Segment]:
 
@@ -260,6 +269,7 @@ class Climber(Env):
 
         return walls
 
+
     def _create_pickaxe(self) -> pymunk.PinJoint:
         pickaxe_x, pickaxe_y = self.player.body.position.x, self.player.body.position.y - self.pickaxe_length
 
@@ -272,7 +282,8 @@ class Climber(Env):
 
         return joint
 
-    def _create_rock(self) -> pymunk.Circle:
+
+    def _create_rock(self) -> tuple[pymunk.Circle, pymunk.Body]:
         rock_body = pymunk.Body(mass=self.rock_mass,
                                 moment=pymunk.moment_for_circle(self.rock_mass, 0, self.rock_size),
                                 body_type=pymunk.Body.DYNAMIC
@@ -285,7 +296,8 @@ class Climber(Env):
         rock.filter = pymunk.ShapeFilter(categories=ObjectCategory.ROCK)
         rock.collision_type = ObjectCategory.ROCK
 
-        return rock
+        return rock, rock_body
+
 
     def _get_obs(self):
         obs = np.zeros(18, dtype=np.float32)
@@ -320,10 +332,10 @@ class Climber(Env):
 
     def _rock_collision(self, arbiter, space, data):
         self.hit_rock = True
-        print("hit_rock")
+        print("GAME LOST - hit_rock")
 
     def _target_collision(self, arbiter, space, data):
         self.hit_target = True
-        print("hit_target")
+        print("GAME WON - hit_target")
 
 
