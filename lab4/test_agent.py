@@ -7,21 +7,15 @@ import io
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 def test_agent():
-    # env = Climber(render_mode='human', rock_every=110)
-    # 1. Tworzymy bazowe środowisko
     env = Climber(render_mode='human', rock_every=110)
-    # 2. Musimy je owinąć tak samo jak w treningu
     venv = DummyVecEnv([lambda: env])
 
     try:
-        # 3. WCZYTUJEMY STATYSTYKI NORMALIZACJI
         venv = VecNormalize.load("vec_normalize.pkl", venv)
-        # BARDZO WAŻNE: Wyłączamy naukę statystyk i normalizację nagród podczas testu
         venv.training = False
         venv.norm_reward = False
     except Exception as e:
         print(f"Błąd ładowania: {e}")
-        # Tutaj Twoja stara logika wstrzykiwania wag (opcjonalnie)
         return
 
     try:
@@ -58,9 +52,6 @@ def test_agent():
         obs, reward, dones, info = venv.step(action)
 
         env.render()
-
-        # if dones[0]:
-        #     obs = venv.reset()
 
     env.close()
 
