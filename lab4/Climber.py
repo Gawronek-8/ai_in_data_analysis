@@ -54,7 +54,7 @@ class Climber(Env):
         self.rock_every = rock_every
 
         self.action_space = spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(18,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(22,), dtype=np.float32)
 
         self.hit_rock = False
         self.hit_target = False
@@ -77,18 +77,18 @@ class Climber(Env):
 
         self.prev_pos = self.player.body.position
 
-        if pickaxe_val >= 0 and self.joint is None:
+        if pickaxe_val > 0.5 and self.joint is None:
             self.joint = self._create_pickaxe()
             self.space.add(self.joint)
-
-        elif pickaxe_val < 0 and self.joint:
+        elif pickaxe_val < -0.5 and self.joint:
             self.space.remove(self.joint)
             self.joint = None
 
+        force_x = player_force * self.swing_power_multiplier
         if self.joint is not None:
-            force_x = player_force * self.swing_power_multiplier
             self.player.body.apply_force_at_local_point((force_x, 0), (0, 0))
-
+        else:
+            self.player.body.apply_force_at_local_point((force_x * 0.2, 0), (0, 0))
 
         game_fps = self.metadata['fps']
 
@@ -101,12 +101,16 @@ class Climber(Env):
         truncated = False
         info = {}
 
-        reward -= 0.01
+        reward -= 0.001
 
         if self.hit_rock:
-            reward -= 150
+            reward -= 2.0
             terminated = True
             info["is_success"] = False
+
+        elif self.hit_target:
+            reward += 20.0
+            terminated = True
 
         elif self.curr_step >= self.max_steps:
             truncated = True
@@ -117,20 +121,17 @@ class Climber(Env):
             info["is_success"] = True
 
         else:
-            prev_x, prev_y = self.prev_pos
-            curr_x, curr_y = self.player.body.position
-            target_x, target_y = self.target.body.position
+            prev_dist = np.linalg.norm(self.prev_pos - self.target.body.position)
+            curr_dist = np.linalg.norm(self.player.body.position - self.target.body.position)
 
-            prev_relative_pos = np.linalg.norm(np.array([target_x - prev_x, target_y - prev_y]))
+            reward += (prev_dist - curr_dist) * 0.1
+            reward += (self.prev_pos.y - self.player.body.position.y) * 0.05
 
-            curr_relative_pos = np.linalg.norm(np.array([target_x - curr_x, target_y - curr_y]))
+            if self.joint is not None:
+                reward += 0.01
 
-            reward +=  prev_relative_pos - curr_relative_pos
-
-        # print("*" * 20)
-        # print(f"CURRENT REWARD IS {reward}")
-        # print("*" * 20)
-
+            reward += (self.player.body.position.y / 1000) * 0.01
+            reward -= abs(self.player.body.angular_velocity) * 0.05
 
         if self.curr_step % self.rock_every == 0:
             rock, rock_body = self._create_rock()
@@ -190,6 +191,9 @@ class Climber(Env):
         self.curr_step = 0
         self.hit_rock = False
         self.hit_target = False
+
+        self.space.gravity = (0, self.gravity_level)
+        self.space.damping = 0.7
 
         return self._get_obs(), {}
 
@@ -269,17 +273,16 @@ class Climber(Env):
 
         return walls
 
-
     def _create_pickaxe(self) -> pymunk.PinJoint:
-        pickaxe_x, pickaxe_y = self.player.body.position.x, self.player.body.position.y - self.pickaxe_length
+        pos = self.player.body.position
+        anchor_point = (pos.x, pos.y - self.pickaxe_length)
 
         joint = pymunk.PinJoint(
             self.space.static_body,
             self.player.body,
-            (pickaxe_x, pickaxe_y),
+            anchor_point,
             (0, 0)
         )
-
         return joint
 
 
@@ -300,19 +303,23 @@ class Climber(Env):
 
 
     def _get_obs(self):
-        obs = np.zeros(18, dtype=np.float32)
-        obs[0] = self.player.body.position.x
-        obs[1] = self.player.body.position.y
-        obs[2] = self.player.body.velocity.x
-        obs[3] = self.player.body.velocity.y
-        obs[4], obs[5] = _get_relative_pos(self.player.body, self.target.body)
+        obs = np.zeros(22, dtype=np.float32)
+
+        obs[0] = self.player.body.position.x / 800.0
+        obs[1] = self.player.body.position.y / 1000.0
+
+        obs[2] = self.player.body.velocity.x / 500.0
+        obs[3] = self.player.body.velocity.y / 500.0
+
+        dx, dy = _get_relative_pos(self.player.body, self.target.body)
+        obs[4] = dx / 800.0
+        obs[5] = dy / 1000.0
 
         shape_filter = pymunk.ShapeFilter(categories=ObjectCategory.ROCK)
         rays = 12
         angle = 360 / rays
 
         for i in range(rays):
-
             rad_deg = np.deg2rad(angle * i)
 
             dx = np.cos(rad_deg) * self.ray_distance
@@ -324,9 +331,17 @@ class Climber(Env):
             query = self.space.segment_query_first(start_p, end_p, 1, shape_filter)
 
             if query is None:
-                obs[6 + i] = self.ray_distance
+                obs[6 + i] = 1.0
             else:
-                obs[6 + i] = query.alpha * self.ray_distance
+                obs[6 + i] = query.alpha
+
+        obs[18] = 1.0 if self.joint is not None else 0.0
+
+        angle = self.player.body.angle
+        obs[19] = np.sin(angle)
+        obs[20] = np.cos(angle)
+
+        obs[21] = self.player.body.angular_velocity / 10.0
 
         return obs
 
@@ -337,5 +352,3 @@ class Climber(Env):
     def _target_collision(self, arbiter, space, data):
         self.hit_target = True
         print("GAME WON - hit_target")
-
-
