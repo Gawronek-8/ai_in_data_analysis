@@ -1,3 +1,4 @@
+import math
 from typing import Any
 
 import numpy as np
@@ -152,14 +153,51 @@ class Climber(Env):
             height = self.metadata['map_settings']['height']
             self.window = pygame.display.set_mode((width, height))
             self.clock = pygame.time.Clock()
-            self.draw_options = pygame_util.DrawOptions(self.window)
+
+            self.player_img_base = pygame.image.load("character_green_walk_a.png").convert_alpha()
+            self.player_img_base = pygame.transform.scale(self.player_img_base,
+                                                          (self.player_size * 2, self.player_size * 2))
+
+            self.rock_img_base = pygame.image.load("block_fall.png").convert_alpha()
+            self.rock_img_base = pygame.transform.scale(self.rock_img_base, (self.rock_size * 2, self.rock_size * 2))
+
+            self.target_img_base = pygame.image.load("ladybug_fly.png").convert_alpha()
+            self.target_img_base = pygame.transform.scale(self.target_img_base,
+                                                          (self.target_size * 2, self.target_size * 2))
 
         self.window.fill((255, 255, 255))
 
-        self.space.debug_draw(self.draw_options)
+
+
+        for wall in self.walls:
+            p1 = (int(wall.a.x), int(wall.a.y))
+            p2 = (int(wall.b.x), int(wall.b.y))
+            pygame.draw.line(self.window, (50, 50, 50), p1, p2, int(wall.radius * 2))
+
+        if self.joint is not None:
+            p1 = (int(self.joint.anchor_a.x), int(self.joint.anchor_a.y))
+            p2 = (int(self.player_body.position.x), int(self.player_body.position.y))
+            pygame.draw.line(self.window, (139, 69, 19), p1, p2, 4)
+
+        p_angle = math.degrees(-self.player_body.angle)
+        p_img_rotated = pygame.transform.rotate(self.player_img_base, p_angle)
+        p_rect = p_img_rotated.get_rect(center=(self.player_body.position.x, self.player_body.position.y))
+        self.window.blit(p_img_rotated, p_rect.topleft)
+
+        t_rect = self.target_img_base.get_rect(center=(self.target_body.position.x, self.target_body.position.y))
+        self.window.blit(self.target_img_base, t_rect.topleft)
+
+        for shape in self.space.shapes:
+            if shape.collision_type == ObjectCategory.ROCK:
+                r_angle = math.degrees(-shape.body.angle)
+                r_img_rotated = pygame.transform.rotate(self.rock_img_base, r_angle)
+                r_rect = r_img_rotated.get_rect(center=(shape.body.position.x, shape.body.position.y))
+                self.window.blit(r_img_rotated, r_rect.topleft)
 
         pygame.display.flip()
         self.clock.tick(self.metadata['fps'])
+
+
 
     def close(self):
         if self.window is not None:
@@ -231,7 +269,7 @@ class Climber(Env):
         target = pymunk.Circle(target_body, radius=self.target_size)
         target.filter = pymunk.ShapeFilter(categories=ObjectCategory.TARGET)
         target.sensor = True
-        target.color = (0, 255, 0, 255)
+        target.color = (0, 0, 0, 0)
         target.collision_type = ObjectCategory.TARGET
 
         return target, target_body
@@ -246,7 +284,7 @@ class Climber(Env):
         player_body.position = self._generate_player_pos()
 
         player = pymunk.Circle(player_body, radius=self.player_size)
-        player.color = (0, 0, 255, 255)
+        player.color = (0, 0, 0, 0)
 
         player.filter = pymunk.ShapeFilter(categories=ObjectCategory.PLAYER)
         player.collision_type = ObjectCategory.PLAYER
@@ -295,7 +333,7 @@ class Climber(Env):
         rock_body.position = self._generate_rock_pos()
 
         rock = pymunk.Circle(rock_body, radius=self.rock_size)
-        rock.color = (100, 100, 100, 255)
+        rock.color = (0, 0, 0, 0)
         rock.filter = pymunk.ShapeFilter(categories=ObjectCategory.ROCK)
         rock.collision_type = ObjectCategory.ROCK
 

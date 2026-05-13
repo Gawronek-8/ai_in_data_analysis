@@ -4,7 +4,8 @@ import numpy as np
 
 
 def play_climber():
-    env = Climber(render_mode='human', rock_every=110, target_size=8, rock_size=25, gravity=500, swing_power=600, pickaxe_length=60)
+    env = Climber(render_mode='human', rock_every=100, target_size=20, rock_size=30, gravity=495,
+                  swing_power=650, pickaxe_length=60, rock_mass=0.75)
     obs, info = env.reset()
     env.render()
     pickaxe_active = False

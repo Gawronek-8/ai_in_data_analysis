@@ -28,4 +28,4 @@ def test_agent(model_path):
 
 
 if __name__ == "__main__":
-    test_agent(ROOT_DIR / "model0.999")
+    test_agent(ROOT_DIR / "model0.9")
